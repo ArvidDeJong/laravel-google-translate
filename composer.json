@@ -1,0 +1,73 @@
+{
+    "name": "darvis/laravel-google-translate",
+    "description": "Google Translate integration for Laravel with support for translatable models",
+    "keywords": [
+        "laravel",
+        "google-translate",
+        "translation",
+        "i18n",
+        "localization",
+        "multilingual",
+        "eloquent",
+        "google-cloud"
+    ],
+    "homepage": "https://github.com/darvis/laravel-google-translate",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Arvid de Jong",
+            "email": "info@arvid.nl",
+            "role": "Developer"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/darvis/laravel-google-translate/issues",
+        "source": "https://github.com/darvis/laravel-google-translate",
+        "docs": "https://github.com/darvis/laravel-google-translate/blob/main/README.md"
+    },
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^11.0|^12.0",
+        "illuminate/http": "^11.0|^12.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^9.0|^10.0",
+        "pestphp/pest": "^3.0",
+        "pestphp/pest-plugin-laravel": "^3.0",
+        "laravel/pint": "^1.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Darvis\\LaravelGoogleTranslate\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Darvis\\LaravelGoogleTranslate\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/pest",
+        "test-coverage": "vendor/bin/pest --coverage",
+        "format": "vendor/bin/pint",
+        "format-test": "vendor/bin/pint --test"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        },
+        "optimize-autoloader": true,
+        "preferred-install": "dist"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Darvis\\LaravelGoogleTranslate\\GoogleTranslateServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}

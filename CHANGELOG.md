@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.0.0] - 2024-01-26
+
 ### Added
+- First stable release
+- Complete documentation
+- Test suite with Pest
+- Laravel 11.x and 12.x support
+- PHP 8.2+ support
 - Initial package release
 - Google Translate integration for Laravel
 - `GoogleTranslateService` for translating text and HTML content
@@ -32,15 +39,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Security
 - Nothing yet
-
-## [1.0.0] - 2024-01-26
-
-### Added
-- First stable release
-- Complete documentation
-- Test suite with Pest
-- Laravel 11.x and 12.x support
-- PHP 8.2+ support
 
 [Unreleased]: https://github.com/darvis/livewire-google-translate/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/darvis/livewire-google-translate/releases/tag/v1.0.0

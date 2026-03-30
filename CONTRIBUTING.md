@@ -65,8 +65,8 @@ Documentation is just as important as code:
 
 2. **Clone your fork**
    ```bash
-   git clone https://github.com/your-username/livewire-google-translate.git
-   cd livewire-google-translate
+   git clone https://github.com/your-username/laravel-google-translate.git
+   cd laravel-google-translate
    ```
 
 3. **Install dependencies**
@@ -151,7 +151,7 @@ composer format
 ```php
 <?php
 
-namespace Darvis\LivewireGoogleTranslate;
+namespace Darvis\LaravelGoogleTranslate;
 
 use Illuminate\Support\Facades\Http;
 
@@ -192,7 +192,7 @@ We use [Pest](https://pestphp.com/) for testing:
 ```php
 <?php
 
-use Darvis\LivewireGoogleTranslate\GoogleTranslateService;
+use Darvis\LaravelGoogleTranslate\GoogleTranslateService;
 
 it('can translate text', function () {
     $service = new GoogleTranslateService();

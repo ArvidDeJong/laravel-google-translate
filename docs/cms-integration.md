@@ -25,7 +25,7 @@ Every model that needs translation support must use the `HasGoogleTranslate` tra
 
 namespace App\Models;
 
-use Darvis\LivewireGoogleTranslate\Traits\HasGoogleTranslate;
+use Darvis\LaravelGoogleTranslate\Traits\HasGoogleTranslate;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -113,7 +113,7 @@ use App\Models\Page;
 use App\Models\Project;
 use App\Models\Knowledgebase;
 // ... import all your translatable models
-use Darvis\LivewireGoogleTranslate\GoogleTranslateService;
+use Darvis\LaravelGoogleTranslate\GoogleTranslateService;
 use Flux\Flux;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Layout;

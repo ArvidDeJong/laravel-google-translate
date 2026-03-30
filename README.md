@@ -1,9 +1,9 @@
-# Livewire Google Translate
+# Laravel Google Translate
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/darvis/livewire-google-translate.svg?style=flat-square)](https://packagist.org/packages/darvis/livewire-google-translate)
-[![PHP Version](https://img.shields.io/packagist/php-v/darvis/livewire-google-translate.svg?style=flat-square)](https://packagist.org/packages/darvis/livewire-google-translate)
-[![Laravel Version](https://img.shields.io/badge/laravel-11.x%20%7C%2012.x-blue.svg?style=flat-square)](https://packagist.org/packages/darvis/livewire-google-translate)
-[![License](https://img.shields.io/packagist/l/darvis/livewire-google-translate.svg?style=flat-square)](https://packagist.org/packages/darvis/livewire-google-translate)
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/darvis/laravel-google-translate.svg?style=flat-square)](https://packagist.org/packages/darvis/laravel-google-translate)
+[![PHP Version](https://img.shields.io/packagist/php-v/darvis/laravel-google-translate.svg?style=flat-square)](https://packagist.org/packages/darvis/laravel-google-translate)
+[![Laravel Version](https://img.shields.io/badge/laravel-11.x%20%7C%2012.x%20%7C%2013.x-blue.svg?style=flat-square)](https://packagist.org/packages/darvis/laravel-google-translate)
+[![License](https://img.shields.io/packagist/l/darvis/laravel-google-translate.svg?style=flat-square)](https://packagist.org/packages/darvis/laravel-google-translate)
 
 Google Translate integration for Laravel with support for translatable Eloquent models.
 
@@ -18,7 +18,7 @@ Google Translate integration for Laravel with support for translatable Eloquent 
 ## Requirements
 
 - PHP 8.2+
-- Laravel 11.x or 12.x
+- Laravel 11.x, 12.x, or 13.x
 - Google Cloud Translation API key
 
 ## Installation
@@ -26,7 +26,7 @@ Google Translate integration for Laravel with support for translatable Eloquent 
 Install the package via Composer:
 
 ```bash
-composer require darvis/livewire-google-translate
+composer require darvis/laravel-google-translate
 ```
 
 Publish the configuration file:
@@ -48,7 +48,7 @@ GOOGLE_TRANSLATE_TARGET_LOCALES=en,de,fr
 ### Basic Translation
 
 ```php
-use Darvis\LivewireGoogleTranslate\GoogleTranslateService;
+use Darvis\LaravelGoogleTranslate\GoogleTranslateService;
 
 $translator = app(GoogleTranslateService::class);
 
@@ -70,7 +70,7 @@ $translations = $translator->translateBatch(['Hallo', 'Wereld'], 'en');
 Add the `HasGoogleTranslate` trait to your Eloquent model:
 
 ```php
-use Darvis\LivewireGoogleTranslate\Traits\HasGoogleTranslate;
+use Darvis\LaravelGoogleTranslate\Traits\HasGoogleTranslate;
 use Illuminate\Database\Eloquent\Model;
 
 class Page extends Model

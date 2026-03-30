@@ -1,6 +1,6 @@
-# Livewire Google Translate - Documentation
+# Laravel Google Translate - Documentation
 
-Welcome to the Livewire Google Translate documentation! This package makes it easy to integrate Google Translate into your Laravel application with support for translatable Eloquent models.
+Welcome to the Laravel Google Translate documentation! This package makes it easy to integrate Google Translate into your Laravel application with support for translatable Eloquent models.
 
 ## 📚 Documentation Overview
 
@@ -28,22 +28,22 @@ Welcome to the Livewire Google Translate documentation! This package makes it ea
 
 ## Quick Links
 
-- [GitHub Repository](https://github.com/darvis/livewire-google-translate)
-- [Packagist](https://packagist.org/packages/darvis/livewire-google-translate)
-- [Report Issues](https://github.com/darvis/livewire-google-translate/issues)
+- [GitHub Repository](https://github.com/darvis/laravel-google-translate)
+- [Packagist](https://packagist.org/packages/darvis/laravel-google-translate)
+- [Report Issues](https://github.com/darvis/laravel-google-translate/issues)
 
 ## Support
 
 If you need help:
 - Check the [Troubleshooting Guide](troubleshooting.md)
-- Search [existing issues](https://github.com/darvis/livewire-google-translate/issues)
-- Create a [new issue](https://github.com/darvis/livewire-google-translate/issues/new)
+- Search [existing issues](https://github.com/darvis/laravel-google-translate/issues)
+- Create a [new issue](https://github.com/darvis/laravel-google-translate/issues/new)
 - Contact: [info@arvid.nl](mailto:info@arvid.nl)
 
 ## Requirements
 
 - PHP 8.2+
-- Laravel 11.x or 12.x
+- Laravel 11.x, 12.x, or 13.x
 - Google Cloud Translation API key
 
 ## License

@@ -1,5 +1,5 @@
 <?php
 
-use Darvis\LivewireGoogleTranslate\Tests\TestCase;
+use Darvis\LaravelGoogleTranslate\Tests\TestCase;
 
 uses(TestCase::class)->in('Feature', 'Unit');

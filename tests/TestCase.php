@@ -1,8 +1,8 @@
 <?php
 
-namespace Darvis\LivewireGoogleTranslate\Tests;
+namespace Darvis\LaravelGoogleTranslate\Tests;
 
-use Darvis\LivewireGoogleTranslate\GoogleTranslateServiceProvider;
+use Darvis\LaravelGoogleTranslate\GoogleTranslateServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 
 class TestCase extends Orchestra

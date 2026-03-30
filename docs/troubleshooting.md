@@ -49,7 +49,7 @@ HTTP 400: API key not valid
 
 **Error:**
 ```
-Class 'Darvis\LivewireGoogleTranslate\GoogleTranslateService' not found
+Class 'Darvis\LaravelGoogleTranslate\GoogleTranslateService' not found
 ```
 
 **Solutions:**
@@ -61,13 +61,13 @@ Class 'Darvis\LivewireGoogleTranslate\GoogleTranslateService' not found
 
 2. Verify installation:
    ```bash
-   composer show darvis/livewire-google-translate
+    composer show darvis/laravel-google-translate
    ```
 
 3. Reinstall if needed:
    ```bash
-   composer remove darvis/livewire-google-translate
-   composer require darvis/livewire-google-translate
+    composer remove darvis/laravel-google-translate
+    composer require darvis/laravel-google-translate
    ```
 
 ## Translation Issues
@@ -151,7 +151,7 @@ if (!$page->hasTranslation('en')) {
 
 1. Verify trait is imported:
    ```php
-   use Darvis\LivewireGoogleTranslate\Traits\HasGoogleTranslate;
+    use Darvis\LaravelGoogleTranslate\Traits\HasGoogleTranslate;
    
    class Page extends Model
    {
@@ -424,7 +424,7 @@ Page::whereNotNull('pid')
 **Solution:** Mock the translation service:
 
 ```php
-use Darvis\LivewireGoogleTranslate\GoogleTranslateService;
+use Darvis\LaravelGoogleTranslate\GoogleTranslateService;
 use Mockery;
 
 public function test_translation()
@@ -454,7 +454,7 @@ If you're still experiencing issues:
    - [API Reference](api-reference.md)
 
 2. **Search existing issues:**
-   - [GitHub Issues](https://github.com/darvis/livewire-google-translate/issues)
+    - [GitHub Issues](https://github.com/darvis/laravel-google-translate/issues)
 
 3. **Create a new issue:**
    - Include error messages

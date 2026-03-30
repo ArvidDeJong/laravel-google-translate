@@ -1,13 +1,13 @@
 # Installation Guide
 
-This guide will walk you through installing and setting up the Livewire Google Translate package in your Laravel application.
+This guide will walk you through installing and setting up the Laravel Google Translate package in your Laravel application.
 
 ## Requirements
 
 Before installing, make sure your system meets these requirements:
 
 - **PHP**: 8.2 or higher
-- **Laravel**: 11.x or 12.x
+- **Laravel**: 11.x, 12.x, or 13.x
 - **Composer**: Latest version recommended
 - **Google Cloud Account**: For API access
 
@@ -16,7 +16,7 @@ Before installing, make sure your system meets these requirements:
 Install the package using Composer:
 
 ```bash
-composer require darvis/livewire-google-translate
+composer require darvis/laravel-google-translate
 ```
 
 ## Step 2: Publish Configuration
@@ -118,7 +118,7 @@ For translatable models, your tables should have:
 Test that everything is working:
 
 ```php
-use Darvis\LivewireGoogleTranslate\GoogleTranslateService;
+use Darvis\LaravelGoogleTranslate\GoogleTranslateService;
 
 $translator = app(GoogleTranslateService::class);
 
@@ -168,7 +168,7 @@ To remove the package:
 
 ```bash
 # Remove the package
-composer remove darvis/livewire-google-translate
+composer remove darvis/laravel-google-translate
 
 # Remove the config file
 rm config/google-translate.php

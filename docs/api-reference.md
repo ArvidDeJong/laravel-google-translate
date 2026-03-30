@@ -585,7 +585,7 @@ class Page extends Model
 ### Mocking the Service
 
 ```php
-use Darvis\LivewireGoogleTranslate\GoogleTranslateService;
+use Darvis\LaravelGoogleTranslate\GoogleTranslateService;
 use Mockery;
 
 $mock = Mockery::mock(GoogleTranslateService::class);

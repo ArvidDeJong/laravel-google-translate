@@ -11,7 +11,7 @@ Make sure you've completed the [Installation Guide](installation.md) before proc
 ### Translate Simple Text
 
 ```php
-use Darvis\LivewireGoogleTranslate\GoogleTranslateService;
+use Darvis\LaravelGoogleTranslate\GoogleTranslateService;
 
 $translator = app(GoogleTranslateService::class);
 
@@ -53,7 +53,7 @@ Add the `HasGoogleTranslate` trait to your model:
 
 namespace App\Models;
 
-use Darvis\LivewireGoogleTranslate\Traits\HasGoogleTranslate;
+use Darvis\LaravelGoogleTranslate\Traits\HasGoogleTranslate;
 use Illuminate\Database\Eloquent\Model;
 
 class Page extends Model

@@ -170,11 +170,11 @@ To stay secure:
 
 1. **Keep the package updated**:
    ```bash
-   composer update darvis/livewire-google-translate
+    composer update darvis/laravel-google-translate
    ```
 
 2. **Monitor security advisories**:
-   - Watch the [GitHub repository](https://github.com/darvis/livewire-google-translate)
+    - Watch the [GitHub repository](https://github.com/darvis/laravel-google-translate)
    - Enable GitHub security alerts
 
 3. **Review the CHANGELOG**:
@@ -197,7 +197,7 @@ For security concerns, contact:
 - **Response Time**: Within 48 hours
 
 For general questions, use:
-- **GitHub Issues**: [Create an issue](https://github.com/darvis/livewire-google-translate/issues)
+- **GitHub Issues**: [Create an issue](https://github.com/darvis/laravel-google-translate/issues)
 
 ## Attribution
 

@@ -1,489 +1,102 @@
+---
+title: Troubleshooting
+nav_order: 7
+description: "Why a translation comes back as null, how to read the log lines of darvis/laravel-google-translate, and the usual causes on the Google side."
+---
+
 # Troubleshooting
 
-Common issues and their solutions when using Livewire Google Translate.
+The package never throws, so a problem shows up as `null`, an empty array or a missing row. Start with the log.
 
-## Installation Issues
-
-### API Key Not Configured
-
-**Error:**
-```
-API key not configured
-```
-
-**Solutions:**
-
-1. Check your `.env` file:
-   ```env
-   GOOGLE_TRANSLATE_API_KEY=your-api-key-here
-   ```
-
-2. Clear config cache:
-   ```bash
-   php artisan config:clear
-   php artisan cache:clear
-   ```
-
-3. Restart your development server
-
-4. Verify the key is loaded:
-   ```php
-   dd(config('google-translate.api_key'));
-   ```
-
-### API Key Not Valid
-
-**Error:**
-```
-HTTP 400: API key not valid
-```
-
-**Solutions:**
-
-1. Verify your API key in Google Cloud Console
-2. Check for extra spaces in `.env` file
-3. Ensure Cloud Translation API is enabled
-4. Check API key restrictions match your setup
-
-### Package Not Found
-
-**Error:**
-```
-Class 'Darvis\LaravelGoogleTranslate\GoogleTranslateService' not found
-```
-
-**Solutions:**
-
-1. Run composer dump-autoload:
-   ```bash
-   composer dump-autoload
-   ```
-
-2. Verify installation:
-   ```bash
-    composer show darvis/laravel-google-translate
-   ```
-
-3. Reinstall if needed:
-   ```bash
-    composer remove darvis/laravel-google-translate
-    composer require darvis/laravel-google-translate
-   ```
-
-## Translation Issues
-
-### Empty Translation Results
-
-**Problem:** Translations return empty strings
-
-**Causes & Solutions:**
-
-1. **Empty source text**
-   ```php
-   // Check source is not empty
-   if (empty($text)) {
-       // Handle empty case
-   }
-   ```
-
-2. **API quota exceeded**
-   - Check Google Cloud Console quota
-   - Upgrade your plan if needed
-
-3. **Network issues**
-   ```php
-   try {
-       $result = $translator->translate($text, 'en');
-   } catch (\Exception $e) {
-       Log::error('Translation failed: ' . $e->getMessage());
-   }
-   ```
-
-### HTML Tags Not Preserved
-
-**Problem:** HTML tags are removed or broken
-
-**Solution:** Use `translateHtml()` instead of `translate()`:
+## Nothing comes back
 
 ```php
-// Wrong
-$result = $translator->translate('<p>Hello</p>', 'nl');
+$translator = app(\Darvis\LaravelGoogleTranslate\GoogleTranslateService::class);
 
-// Correct
-$result = $translator->translateHtml('<p>Hello</p>', 'nl');
+$translator->isAvailable();   // false: there is no API key
 ```
 
-For models, add fields to `$htmlFields`:
+**`isAvailable()` is false.** `GOOGLE_TRANSLATE_API_KEY` is missing or empty. After changing `.env`, run `php artisan config:clear`; with a cached config the old value stays in use.
+
+**`isAvailable()` is true and the result is still `null`.** The call failed. Look for one of these lines in `storage/logs/laravel.log`:
+
+```text
+Google Translate failed: ...
+Google Translate HTML failed: ...
+Google Translate batch failed: ...
+```
+
+What follows the prefix is the response body from Google, or the message of the HTTP client.
+
+| In the log | Cause |
+| --- | --- |
+| `API key not valid` | The key is wrong, or it was deleted in the Google Cloud console. |
+| `Cloud Translation API has not been used in project ... or it is disabled` | Enable the Cloud Translation API for the project the key belongs to. |
+| `Requests from referer ... are blocked` or `The provided API key has an IP address restriction` | The restriction on the key does not match your server. Use an IP restriction for server side calls, not an HTTP referrer. |
+| `This API method requires billing to be enabled` | Enable billing on the Google Cloud project. |
+| `User Rate Limit Exceeded` or HTTP 429 | You send too much at once. Translate in queued jobs and rate limit the queue. |
+| `Invalid Value` for `target` or `source` | The locale is not a language code Google knows, for example `en_US` instead of `en`. |
+| `cURL error 28` | Timeout. Try again; the package does not retry by itself. |
+
+**The text is empty.** Empty input returns `null` without a call, and nothing is logged.
+
+## The HTML comes back broken
+
+The text went through `translate()` instead of `translateHtml()`. For a model, the field is missing from `$htmlFields`.
+
+## createTranslation() returns null
+
+- No API key: see above.
+- None of the translatable fields has a value on the source row.
+- Every field failed: see the log.
+
+## createTranslation() throws a MassAssignmentException
+
+The translation is made with `create()`. Add `pid`, `locale`, the translatable fields and everything you pass as additional attributes to `$fillable`.
+
+## createTranslation() throws a database error about a missing value
+
+A column without a default is not among the translatable fields. Pass it as an additional attribute:
 
 ```php
-protected array $htmlFields = [
-    'content',
-    'description',
-];
+$page->createTranslation('en', ['slug' => 'about-us', 'status' => 'draft']);
 ```
 
-### Translation Already Exists
+## fillMissingTranslations() reports "Source translation not found"
 
-**Error:**
-```
-Translation for locale 'en' already exists
-```
+There is no row in the source locale within this group of translations. Pass the locale the source is actually written in: `$row->fillMissingTranslations('de')`.
 
-**Solution:** Check before creating:
+Before 1.1.0 this error also came back for every translation row, because the source row was not found from a translation. Upgrade to 1.1.0 or later.
+
+## The same text is translated twice
+
+`createTranslation()` and `fillMissingTranslations()` never send a field twice, but loose calls to `translate()` are not cached. Cache them yourself:
 
 ```php
-if (!$page->hasTranslation('en')) {
-    $page->createTranslation('en');
-} else {
-    // Update existing translation
-    $existing = $page->getTranslation('en');
-    $existing->update([...]);
-}
+$translated = Cache::rememberForever(
+    'translation.'.md5($text).'.'.$locale,
+    fn () => $translator->translate($text, $locale),
+);
 ```
 
-## Model Issues
+A failed call returns `null`, and the cache treats a stored `null` as a miss, so a failure is tried again next time.
 
-### Trait Not Working
+## Tests call Google
 
-**Problem:** Model methods not available
-
-**Solutions:**
-
-1. Verify trait is imported:
-   ```php
-    use Darvis\LaravelGoogleTranslate\Traits\HasGoogleTranslate;
-   
-   class Page extends Model
-   {
-       use HasGoogleTranslate;
-   }
-   ```
-
-2. Clear compiled files:
-   ```bash
-   php artisan clear-compiled
-   composer dump-autoload
-   ```
-
-### Missing Columns
-
-**Error:**
-```
-SQLSTATE[42S22]: Column not found: 'locale'
-```
-
-**Solution:** Add required columns to your migration:
+Fake the HTTP client and block everything that is not faked:
 
 ```php
-Schema::table('pages', function (Blueprint $table) {
-    $table->foreignId('pid')->nullable()->constrained('pages')->nullOnDelete();
-    $table->string('locale', 5)->default('nl');
-    $table->index(['locale', 'pid']);
-});
+Http::preventStrayRequests();
+
+Http::fake([
+    'translation.googleapis.com/*' => Http::response([
+        'data' => ['translations' => [['translatedText' => 'Hello']]],
+    ]),
+]);
 ```
 
-Run the migration:
-```bash
-php artisan migrate
-```
+Set `google-translate.api_key` to any value in the test; without a key nothing is sent and every result is `null`.
 
-### Translatable Fields Not Set
+## Still stuck
 
-**Problem:** No fields are translated
-
-**Solution:** Define `$translatableFields` in your model:
-
-```php
-protected array $translatableFields = [
-    'title',
-    'content',
-    'description',
-];
-```
-
-### Foreign Key Constraint Error
-
-**Error:**
-```
-SQLSTATE[23000]: Integrity constraint violation
-```
-
-**Solutions:**
-
-1. Ensure parent record exists:
-   ```php
-   $source = Page::find($pid);
-   if (!$source) {
-       throw new \Exception('Source page not found');
-   }
-   ```
-
-2. Use `nullOnDelete()` in migration:
-   ```php
-   $table->foreignId('pid')
-       ->nullable()
-       ->constrained('pages')
-       ->nullOnDelete();
-   ```
-
-## API Issues
-
-### Quota Exceeded
-
-**Error:**
-```
-HTTP 429: Quota exceeded
-```
-
-**Solutions:**
-
-1. Check usage in Google Cloud Console
-2. Implement rate limiting:
-   ```php
-   use Illuminate\Support\Facades\RateLimiter;
-   
-   if (RateLimiter::tooManyAttempts('translate', 100)) {
-       throw new \Exception('Too many translation requests');
-   }
-   
-   RateLimiter::hit('translate');
-   $result = $translator->translate($text, 'en');
-   ```
-
-3. Use queues for bulk translations:
-   ```php
-   dispatch(new TranslatePageJob($page, 'en'));
-   ```
-
-4. Upgrade your Google Cloud plan
-
-### API Request Timeout
-
-**Error:**
-```
-cURL error 28: Operation timed out
-```
-
-**Solutions:**
-
-1. Check your internet connection
-2. Increase timeout in HTTP client
-3. Retry failed requests:
-   ```php
-   $maxRetries = 3;
-   $attempt = 0;
-   
-   while ($attempt < $maxRetries) {
-       try {
-           return $translator->translate($text, 'en');
-       } catch (\Exception $e) {
-           $attempt++;
-           if ($attempt >= $maxRetries) {
-               throw $e;
-           }
-           sleep(1);
-       }
-   }
-   ```
-
-### Invalid Locale Code
-
-**Error:**
-```
-HTTP 400: Invalid value for 'target'
-```
-
-**Solution:** Use valid ISO 639-1 language codes:
-
-```php
-// Valid codes
-'en', 'nl', 'de', 'fr', 'es', 'it', 'pt', 'ru', 'ja', 'zh'
-
-// Invalid codes
-'eng', 'dutch', 'english'
-```
-
-See [Google's supported languages](https://cloud.google.com/translate/docs/languages).
-
-## Performance Issues
-
-### Slow Translation
-
-**Problem:** Translations take too long
-
-**Solutions:**
-
-1. **Use batch translation:**
-   ```php
-   // Slow: Multiple API calls
-   foreach ($texts as $text) {
-       $translator->translate($text, 'en');
-   }
-   
-   // Fast: One API call
-   $results = $translator->translateBatch($texts, 'en');
-   ```
-
-2. **Use queues:**
-   ```php
-   // Create job
-   php artisan make:job TranslateContentJob
-   
-   // Dispatch job
-   TranslateContentJob::dispatch($page, 'en');
-   ```
-
-3. **Cache results:**
-   ```php
-   $cacheKey = "translation.{$text}.{$locale}";
-   $result = Cache::remember($cacheKey, 3600, function () use ($text, $locale) {
-       return $translator->translate($text, $locale);
-   });
-   ```
-
-### Memory Issues
-
-**Problem:** Out of memory when translating many items
-
-**Solutions:**
-
-1. **Use chunking:**
-   ```php
-   Page::sourceItems()->chunk(100, function ($pages) {
-       foreach ($pages as $page) {
-           $page->createTranslation('en');
-       }
-   });
-   ```
-
-2. **Use cursor:**
-   ```php
-   foreach (Page::sourceItems()->cursor() as $page) {
-       $page->createTranslation('en');
-   }
-   ```
-
-3. **Process in queue:**
-   ```php
-   Page::sourceItems()->each(function ($page) {
-       TranslatePageJob::dispatch($page, 'en');
-   });
-   ```
-
-## Database Issues
-
-### Duplicate Translations
-
-**Problem:** Multiple translations for same locale
-
-**Solution:** Add unique constraint:
-
-```php
-Schema::table('pages', function (Blueprint $table) {
-    $table->unique(['pid', 'locale']);
-});
-```
-
-### Orphaned Translations
-
-**Problem:** Translations exist but source is deleted
-
-**Solution:** Use `nullOnDelete()` or `cascadeOnDelete()`:
-
-```php
-// Option 1: Set pid to null when source deleted
-$table->foreignId('pid')
-    ->nullable()
-    ->constrained('pages')
-    ->nullOnDelete();
-
-// Option 2: Delete translations when source deleted
-$table->foreignId('pid')
-    ->nullable()
-    ->constrained('pages')
-    ->cascadeOnDelete();
-```
-
-Clean up existing orphans:
-```php
-Page::whereNotNull('pid')
-    ->whereNotExists(function ($query) {
-        $query->select('id')
-            ->from('pages as parent')
-            ->whereColumn('parent.id', 'pages.pid');
-    })
-    ->delete();
-```
-
-## Testing Issues
-
-### Tests Failing
-
-**Problem:** Tests fail with API errors
-
-**Solution:** Mock the translation service:
-
-```php
-use Darvis\LaravelGoogleTranslate\GoogleTranslateService;
-use Mockery;
-
-public function test_translation()
-{
-    $mock = Mockery::mock(GoogleTranslateService::class);
-    $mock->shouldReceive('translate')
-        ->andReturn('Mocked translation');
-    
-    $this->app->instance(GoogleTranslateService::class, $mock);
-    
-    // Your test code
-}
-```
-
-Or use a fake API key in `.env.testing`:
-```env
-GOOGLE_TRANSLATE_API_KEY=fake-key-for-testing
-```
-
-## Getting Help
-
-If you're still experiencing issues:
-
-1. **Check the documentation:**
-   - [Installation Guide](installation.md)
-   - [Quick Start](quickstart.md)
-   - [API Reference](api-reference.md)
-
-2. **Search existing issues:**
-    - [GitHub Issues](https://github.com/darvis/laravel-google-translate/issues)
-
-3. **Create a new issue:**
-   - Include error messages
-   - Provide code examples
-   - Mention PHP, Laravel, and package versions
-
-4. **Contact support:**
-   - Email: [info@arvid.nl](mailto:info@arvid.nl)
-
-## Debug Mode
-
-Enable detailed error logging:
-
-```php
-// In your code
-try {
-    $result = $translator->translate($text, 'en');
-} catch (\Exception $e) {
-    Log::error('Translation error', [
-        'text' => $text,
-        'locale' => 'en',
-        'error' => $e->getMessage(),
-        'trace' => $e->getTraceAsString(),
-    ]);
-    throw $e;
-}
-```
-
-Check logs:
-```bash
-tail -f storage/logs/laravel.log
-```
+Open an [issue](https://github.com/ArvidDeJong/laravel-google-translate/issues/new/choose) with the log line, without your API key.

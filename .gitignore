@@ -10,3 +10,7 @@ phpunit.xml
 *.swo
 .DS_Store
 coverage/
+.phpunit.cache/
+.env
+build/
+*.log

@@ -1,354 +1,74 @@
-# Basic Concepts
+---
+title: Concepts
+nav_order: 4
+description: "How darvis/laravel-google-translate stores translations as rows linked by pid, what happens when a call fails, and what a translation costs."
+---
 
-This guide explains the core concepts behind Livewire Google Translate to help you understand how the package works.
+# Concepts
 
-## Overview
+## One row per locale
 
-Livewire Google Translate provides two main components:
+The trait does not add a translations table or JSON columns. A translation is a row in the same table:
 
-1. **Translation Service** - A service for translating text and HTML
-2. **Model Trait** - Integration with Eloquent models for managing translations
+| id | pid | locale | title |
+| --- | --- | --- | --- |
+| 1 | `null` | nl | Over ons |
+| 2 | 1 | en | About us |
+| 3 | 1 | de | Über uns |
 
-## Translation Service
+- The **source row** has no `pid`.
+- A **translation** has the id of the source row in `pid`.
+- Every row has its own slug, status and relations, so a translation is a full page of its own.
 
-The `GoogleTranslateService` is the core of the package. It communicates with Google's Cloud Translation API to translate content.
+`hasTranslation()`, `getTranslation()` and `getAllTranslations()` work from the source row and from any translation of it.
 
-### How It Works
-
-```php
-$translator = app(GoogleTranslateService::class);
-$result = $translator->translate('Hello', 'nl');
-```
-
-**Process:**
-1. Service validates the API key is configured
-2. Sends request to Google Cloud Translation API
-3. Receives translated text
-4. Returns the result
-
-### Key Features
-
-- **Text Translation**: Plain text translation
-- **HTML Translation**: Preserves HTML tags during translation
-- **Batch Translation**: Translate multiple texts in one API call
-- **Field Translation**: Translate arrays of fields with HTML support
-
-## Model Translation System
-
-The package uses a parent-child relationship to manage translations.
-
-### The Parent-Child Model
-
-```
-┌─────────────────┐
-│  Dutch Page     │  <- Source (pid = null)
-│  locale: 'nl'   │
-│  pid: null      │
-└────────┬────────┘
-         │
-         ├─────────────────────┐
-         │                     │
-┌────────▼────────┐   ┌────────▼────────┐
-│  English Page   │   │  German Page    │
-│  locale: 'en'   │   │  locale: 'de'   │
-│  pid: 1         │   │  pid: 1         │
-└─────────────────┘   └─────────────────┘
-```
-
-**Key Points:**
-- Source items have `pid = null`
-- Translations have `pid` pointing to the source
-- Each translation has a unique `locale`
-- All share the same translatable content
-
-### Database Structure
-
-Required columns for translatable models:
+## Which fields are translated
 
 ```php
-$table->id();
-$table->foreignId('pid')->nullable()->constrained('pages')->nullOnDelete();
-$table->string('locale', 5)->default('nl');
-// ... your other columns
+protected $translatableFields = ['title', 'content', 'excerpt'];
+
+protected $htmlFields = ['content'];
 ```
 
-**Column Purposes:**
-- `id`: Unique identifier for each record
-- `pid`: Parent ID (null for source, source ID for translations)
-- `locale`: Language code (e.g., 'nl', 'en', 'de')
+Without `$translatableFields` the trait uses `title`, `content`, `description` and `excerpt`; without `$htmlFields` it uses `content` and `description`. Override `getTranslatableFields()` or `getHtmlFields()` when the list depends on the model.
 
-## Translatable Fields
+A field in `$htmlFields` is sent with `format` set to `html`, so the tags survive. Everything else is sent as plain text.
 
-You define which fields should be translated in your model:
+## A failure never throws
 
-```php
-protected array $translatableFields = [
-    'title',
-    'content',
-    'description',
-];
-```
+The service catches every error of the HTTP client and of the API.
 
-**What Happens:**
-- Only these fields are translated
-- Other fields must be provided manually
-- Empty fields are skipped
+| Situation | `translate()`, `translateHtml()` | `translateBatch()` | In the log |
+| --- | --- | --- | --- |
+| No API key | `null` | `[]` | nothing |
+| Empty input | `null` | `[]` | nothing |
+| HTTP 4xx or 5xx | `null` | `[]` | `Google Translate failed: ` and the response body |
+| Connection error or timeout | `null` | `[]` | `Google Translate failed: ` and the message |
 
-## HTML Fields
+The prefix is `Google Translate HTML failed` for `translateHtml()` and `Google Translate batch failed` for a batch.
 
-Some fields contain HTML that should be preserved:
+So check the return value. `createTranslation()` returns `null` when there is no key or no field could be translated. When some fields fail, the translation is created with the fields that did succeed; `fillMissingTranslations()` fills the rest later.
 
-```php
-protected array $htmlFields = [
-    'content',
-    'description',
-];
-```
+## The API key
 
-**Behavior:**
-- Fields in `htmlFields` use `translateHtml()`
-- Other fields use `translate()`
-- HTML tags remain intact
-
-**Example:**
-```php
-// Input
-'<p>Welkom bij <strong>Laravel</strong></p>'
-
-// Output (English)
-'<p>Welcome to <strong>Laravel</strong></p>'
-```
-
-## Translation Workflow
-
-### Creating a New Translation
-
-```php
-$source = Page::find(1); // Dutch page
-$translation = $source->createTranslation('en', [
-    'slug' => 'about-us',
-    'active' => true,
-]);
-```
-
-**What Happens:**
-1. Checks if translation already exists
-2. Translates all `translatableFields`
-3. Creates new record with:
-   - Translated fields
-   - Provided attributes (`slug`, `active`)
-   - `pid` set to source ID
-   - `locale` set to target locale
-
-### Filling Missing Translations
-
-```php
-$translation = Page::where('locale', 'en')->first();
-$result = $translation->fillMissingTranslations('nl');
-```
-
-**What Happens:**
-1. Finds the source record (where `id = pid`)
-2. Checks each translatable field
-3. If field is empty, translates from source
-4. Saves the updated record
-
-**Use Case:** When you've manually created a translation but left some fields empty.
-
-## Scopes
-
-The package provides query scopes for filtering:
-
-### sourceItems()
-
-Returns only source records (no `pid`):
-
-```php
-Page::sourceItems()->get();
-// Returns: All pages where pid IS NULL
-```
-
-### localized($locale)
-
-Returns records in a specific locale:
-
-```php
-Page::localized('en')->get();
-// Returns: All pages where locale = 'en'
-
-Page::localized()->get();
-// Returns: All pages where locale = app()->getLocale()
-```
-
-## API Communication
-
-### Request Flow
-
-```
-Your App → GoogleTranslateService → Google Cloud API
-                                            ↓
-Your App ← GoogleTranslateService ← Translated Text
-```
-
-### API Request Format
-
-```php
-// Single translation
-POST https://translation.googleapis.com/language/translate/v2
-{
-    "q": "Hello world",
-    "target": "nl",
-    "source": "en",
-    "format": "text",
-    "key": "YOUR_API_KEY"
-}
-
-// Response
-{
-    "data": {
-        "translations": [
-            {
-                "translatedText": "Hallo wereld"
-            }
-        ]
-    }
-}
-```
-
-## Configuration
-
-The package uses these configuration values:
-
-```php
-// config/google-translate.php
-return [
-    'api_key' => env('GOOGLE_TRANSLATE_API_KEY'),
-    'source_locale' => env('GOOGLE_TRANSLATE_SOURCE_LOCALE', 'nl'),
-    'target_locales' => explode(',', env('GOOGLE_TRANSLATE_TARGET_LOCALES', 'en')),
-];
-```
-
-**Access in Code:**
-```php
-$service->getSourceLocale(); // Returns 'nl'
-$service->getTargetLocales(); // Returns ['en', 'de', 'fr']
-```
-
-## Error Handling
-
-The package throws exceptions for various error conditions:
-
-```php
-try {
-    $translation = $page->createTranslation('en');
-} catch (\Exception $e) {
-    // Handle errors:
-    // - API key not configured
-    // - API request failed
-    // - Translation already exists
-    // - Network errors
-}
-```
-
-**Common Errors:**
-- `API key not configured`: Missing `GOOGLE_TRANSLATE_API_KEY`
-- `Translation already exists`: Duplicate translation attempt
-- `HTTP 400`: Invalid request (check API key, locale codes)
-- `HTTP 403`: API key restrictions or quota exceeded
-
-## Best Practices
-
-### 1. Always Check Before Creating
-
-```php
-if (!$page->hasTranslation('en')) {
-    $page->createTranslation('en');
-}
-```
-
-### 2. Use Batch Translation for Multiple Items
-
-```php
-// Better: One API call
-$texts = ['Hello', 'World', 'Welcome'];
-$results = $translator->translateBatch($texts, 'nl');
-
-// Avoid: Multiple API calls
-foreach ($texts as $text) {
-    $translator->translate($text, 'nl');
-}
-```
-
-### 3. Handle Errors Gracefully
-
-```php
-try {
-    $translation = $page->createTranslation('en');
-} catch (\Exception $e) {
-    Log::error('Translation failed', [
-        'page_id' => $page->id,
-        'locale' => 'en',
-        'error' => $e->getMessage(),
-    ]);
-    
-    // Notify admin or retry later
-}
-```
-
-### 4. Use Scopes for Queries
-
-```php
-// Good: Use provided scopes
-$pages = Page::localized('en')->get();
-
-// Avoid: Manual where clauses
-$pages = Page::where('locale', 'en')->get();
-```
-
-### 5. Index Your Database
-
-```php
-// In migration
-$table->index(['locale', 'pid']);
-$table->index('locale');
-```
-
-## Performance Considerations
-
-### API Costs
-
-Google Cloud Translation API charges per character:
-- Monitor your usage in Google Cloud Console
-- Use batch translation to reduce API calls
-- Cache translations when possible
-
-### Database Queries
-
-```php
-// Efficient: One query with scope
-$pages = Page::localized('en')
-    ->with('author')
-    ->get();
-
-// Inefficient: Multiple queries
-$pages = Page::all()->filter(fn($p) => $p->locale === 'en');
-```
-
-### Caching Translations
-
-```php
-use Illuminate\Support\Facades\Cache;
-
-$translation = Cache::remember("page.{$id}.{$locale}", 3600, function () use ($id, $locale) {
-    return Page::where('id', $id)
-        ->where('locale', $locale)
-        ->first();
-});
-```
-
-## Next Steps
-
-- [Translation Service](translation-service.md) - Detailed service documentation
-- [Model Integration](models.md) - Advanced model features
-- [Configuration](configuration.md) - Configuration options
-- [Troubleshooting](troubleshooting.md) - Common issues
+The key is sent in the `X-goog-api-key` header, only to `translation.googleapis.com`. It is never part of the URL, so an error message that quotes the URL does not leak it into the log.
+
+The service reads the key when it is constructed. It is a singleton, so a key you change at runtime is only picked up after `app()->forgetInstance(GoogleTranslateService::class)`.
+
+## Costs
+
+Google bills per character, for every target locale again. The package avoids sending the same text twice:
+
+- `createTranslation()` returns the existing row when the locale already exists.
+- `fillMissingTranslations()` skips the fields that already have a value.
+- `translateBatch()` sends many strings in one request; that saves round trips, not characters.
+
+There is no cache. When you translate the same loose strings more than once, cache the result yourself.
+
+## Translated HTML is external input
+
+The source may be your own content, but the result comes from an external service. Sanitise translated HTML the way you sanitise the source before you render it unescaped.
+
+## Reading the settings
+
+`Darvis\LaravelGoogleTranslate\Support\GoogleTranslateConfig` is the one place that reads the config: `apiKey()`, `sourceLocale()` and `targetLocales()`. The service exposes the last two as `getSourceLocale()` and `getTargetLocales()`.

@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Documentation: a [Testing](https://arviddejong.github.io/laravel-google-translate/testing.html) page
+  with a complete example test, the shape of the request and the response to fake, and the two traps
+  (the key is read once; a forgotten fake does not fail the test by itself).
+- Documentation: the home page says who the package is for and what it does not do, the installation
+  page has numbered steps and a "Check that it works" section that starts with the free
+  `isAvailable()` check, and the quick start is one complete example with file names and imports.
+- The docs guard test checks that every link between pages resolves and that the home page links to
+  every page.
+
+### Fixed
+- The docs and the FAQ said `Http::preventStrayRequests()` makes a forgotten fake fail the test. It
+  blocks the request, but the package catches that exception like every other failure: the result is
+  `null` and the log has `Google Translate failed: Attempted request to [...] without a matching fake.`
+- The troubleshooting table quoted error texts of Google's API as if they were fixed ("API key not
+  valid", "Invalid Value", referrer, IP and billing messages, HTTP 429 for the rate limit). Those are
+  Google's words and the package cannot guarantee them. The page now quotes only the package's own
+  log prefixes and the two messages Google documents for an HTTP 403 (`Daily Limit Exceeded`,
+  `User Rate Limit Exceeded`), and describes the other causes.
+- The docs said a `null` result with a key always has a line in the log. A 2xx response without a
+  translation in the body returns `null` (or `[]`) and logs nothing.
+- The docs said `createTranslation()` throws a `MassAssignmentException` when an attribute is not
+  fillable. That only happens on a model without any `$fillable`; with a `$fillable` that misses
+  `pid`, Laravel drops it silently and the new row looks like a second source row.
+- The docs gave "a few hundred milliseconds per field" as the duration of a call. The package cannot
+  know that; what it does is one HTTP request per field and per locale, with Laravel's default
+  timeout of 30 seconds and no retry.
+- The `fillMissingTranslations()` example reported an `excerpt` field the example model does not
+  have, and the queued job example missed its namespace and imports.
+- The CMS example accepted any model label and any locale from the browser, and could translate a
+  translation row. It now checks both against its own lists and only loads source rows. The page
+  also says that Livewire has to be installed by the host app, and that `Route::get()` with a
+  component class works in Livewire 3 and 4 while `Route::livewire()` exists only in Livewire 4.
+- The requirements differed per page. They now read the same everywhere: PHP 8.2 or higher,
+  Laravel 11, 12 or 13 (Laravel 13 itself needs PHP 8.3), and an API key from a Google Cloud project
+  with billing enabled.
+
 ## [1.1.0] - 2026-09-21
 
 ### Added

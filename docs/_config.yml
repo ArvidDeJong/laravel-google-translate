@@ -18,7 +18,7 @@ package:
   license_url: https://github.com/ArvidDeJong/laravel-google-translate/blob/main/LICENSE
   requires: "PHP 8.2+, Laravel 11, 12 or 13, a Google Cloud Translation API key"
   platforms: [Laravel]
-  keywords: [laravel, google translate, google cloud translation, translation, i18n, localization, multilingual, eloquent, html translation]
+  keywords: [laravel, google translate, google cloud translation api, machine translation, translate eloquent model, html translation, multilingual, localization, i18n, laravel boost]
 
 # Developer credit in the footer and the structured data.
 developer:

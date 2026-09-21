@@ -1,0 +1,48 @@
+# Questions as people ask them to an assistant. Short, factual answers.
+# Rendered on faq.md, in the FAQPage structured data and in llms.txt.
+- q: How do I translate text with Google Translate in a Laravel application?
+  a: >-
+    Install `darvis/laravel-google-translate`, set `GOOGLE_TRANSLATE_API_KEY` and call
+    `app(GoogleTranslateService::class)->translate('Hallo wereld', 'en')`. You get the translated string
+    back, or `null` when the text is empty, the key is missing or the API call failed.
+
+- q: How do I translate an Eloquent model into another language?
+  a: >-
+    Give the table a `locale` and a nullable `pid` column, add the `HasGoogleTranslate` trait and list
+    the fields in `$translatableFields`. `$page->createTranslation('en')` then translates those fields
+    and stores a new row with `locale` set to `en` and `pid` set to the id of the source row.
+
+- q: Does darvis/laravel-google-translate throw an exception when a translation fails?
+  a: >-
+    No. A failed call is written to the log with `Log::error()` and the method returns `null`, or an
+    empty array for a batch. `createTranslation()` returns `null` when nothing could be translated, and
+    `fillMissingTranslations()` reports the failed fields in its `errors` list. Check the return value.
+
+- q: Does the package keep the HTML tags in translated content?
+  a: >-
+    Yes. `translateHtml()` and every field you list in `$htmlFields` are sent with `format` set to
+    `html`, so Google translates the text and leaves the tags alone. The result is still HTML from an
+    external service, so sanitise it the same way you sanitise the source.
+
+- q: What does Google Cloud Translation cost with this package?
+  a: >-
+    The package adds no costs of its own. Google bills per character you send, for every target locale
+    again. `createTranslation()` returns the existing row when the locale already exists, and
+    `fillMissingTranslations()` only sends the fields that are still empty, so nothing is translated twice.
+
+- q: Where does the package send my API key?
+  a: >-
+    Only to `translation.googleapis.com`, in the `X-goog-api-key` header. It is not part of the URL, so
+    it does not end up in the log when a request fails. Restrict the key to the Cloud Translation API
+    in the Google Cloud console.
+
+- q: How do I test code that uses darvis/laravel-google-translate without calling Google?
+  a: >-
+    Fake the HTTP client with `Http::fake(['translation.googleapis.com/*' => Http::response([...])])`
+    and set `google-translate.api_key` to any value, because without a key nothing is sent. Add
+    `Http::preventStrayRequests()` so a forgotten fake fails the test instead of costing money.
+
+- q: Which Laravel and PHP versions does darvis/laravel-google-translate support?
+  a: >-
+    PHP 8.2 and higher with Laravel 11, 12 or 13. The test suite runs on every combination, on the
+    lowest and the latest dependencies.

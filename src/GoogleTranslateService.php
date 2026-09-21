@@ -2,6 +2,7 @@
 
 namespace Darvis\LaravelGoogleTranslate;
 
+use Darvis\LaravelGoogleTranslate\Support\GoogleTranslateConfig;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -13,7 +14,7 @@ class GoogleTranslateService
 
     public function __construct()
     {
-        $this->apiKey = config('google-translate.api_key');
+        $this->apiKey = GoogleTranslateConfig::apiKey();
     }
 
     /**
@@ -29,15 +30,17 @@ class GoogleTranslateService
      */
     public function getSourceLocale(): string
     {
-        return config('google-translate.source_locale', 'nl');
+        return GoogleTranslateConfig::sourceLocale();
     }
 
     /**
      * Get the configured target locales
+     *
+     * @return array<int, string>
      */
     public function getTargetLocales(): array
     {
-        return config('google-translate.target_locales', ['en']);
+        return GoogleTranslateConfig::targetLocales();
     }
 
     /**
@@ -49,28 +52,9 @@ class GoogleTranslateService
             return null;
         }
 
-        $sourceLocale = $sourceLocale ?? $this->getSourceLocale();
+        $translations = $this->request($text, $targetLocale, $sourceLocale, 'text', 'Google Translate failed');
 
-        try {
-            $response = Http::asForm()->post($this->baseUrl.'?key='.$this->apiKey, [
-                'q' => $text,
-                'source' => $sourceLocale,
-                'target' => $targetLocale,
-                'format' => 'text',
-            ]);
-
-            if ($response->successful()) {
-                return $response->json('data.translations.0.translatedText');
-            }
-
-            Log::error('Google Translate failed: '.$response->body());
-
-            return null;
-        } catch (\Exception $e) {
-            Log::error('Google Translate failed: '.$e->getMessage());
-
-            return null;
-        }
+        return $this->firstTranslation($translations);
     }
 
     /**
@@ -82,32 +66,16 @@ class GoogleTranslateService
             return null;
         }
 
-        $sourceLocale = $sourceLocale ?? $this->getSourceLocale();
+        $translations = $this->request($html, $targetLocale, $sourceLocale, 'html', 'Google Translate HTML failed');
 
-        try {
-            $response = Http::asForm()->post($this->baseUrl.'?key='.$this->apiKey, [
-                'q' => $html,
-                'source' => $sourceLocale,
-                'target' => $targetLocale,
-                'format' => 'html',
-            ]);
-
-            if ($response->successful()) {
-                return $response->json('data.translations.0.translatedText');
-            }
-
-            Log::error('Google Translate HTML failed: '.$response->body());
-
-            return null;
-        } catch (\Exception $e) {
-            Log::error('Google Translate HTML failed: '.$e->getMessage());
-
-            return null;
-        }
+        return $this->firstTranslation($translations);
     }
 
     /**
      * Translate multiple texts at once (batch)
+     *
+     * @param  array<int, string>  $texts
+     * @return array<int, string>
      */
     public function translateBatch(array $texts, string $targetLocale, ?string $sourceLocale = null): array
     {
@@ -115,34 +83,15 @@ class GoogleTranslateService
             return [];
         }
 
-        $sourceLocale = $sourceLocale ?? $this->getSourceLocale();
-
-        try {
-            $response = Http::asForm()->post($this->baseUrl.'?key='.$this->apiKey, [
-                'q' => $texts,
-                'source' => $sourceLocale,
-                'target' => $targetLocale,
-                'format' => 'text',
-            ]);
-
-            if ($response->successful()) {
-                $translations = $response->json('data.translations');
-
-                return array_map(fn ($t) => $t['translatedText'], $translations);
-            }
-
-            Log::error('Google Translate batch failed: '.$response->body());
-
-            return [];
-        } catch (\Exception $e) {
-            Log::error('Google Translate batch failed: '.$e->getMessage());
-
-            return [];
-        }
+        return $this->request(array_values($texts), $targetLocale, $sourceLocale, 'text', 'Google Translate batch failed') ?? [];
     }
 
     /**
      * Translate an array of fields, using HTML mode for specified fields
+     *
+     * @param  array<string, mixed>  $fields
+     * @param  array<int, string>  $htmlFields
+     * @return array<string, string>
      */
     public function translateFields(array $fields, string $targetLocale, ?string $sourceLocale = null, array $htmlFields = []): array
     {
@@ -154,12 +103,70 @@ class GoogleTranslateService
             }
 
             if (in_array($field, $htmlFields)) {
-                $translated[$field] = $this->translateHtml($value, $targetLocale, $sourceLocale);
+                $translated[$field] = $this->translateHtml((string) $value, $targetLocale, $sourceLocale);
             } else {
-                $translated[$field] = $this->translate($value, $targetLocale, $sourceLocale);
+                $translated[$field] = $this->translate((string) $value, $targetLocale, $sourceLocale);
             }
         }
 
         return array_filter($translated);
+    }
+
+    /**
+     * The first translated text, or null when the call failed or came back without one.
+     *
+     * @param  array<int, string>|null  $translations
+     */
+    protected function firstTranslation(?array $translations): ?string
+    {
+        $first = $translations[0] ?? '';
+
+        return $first === '' ? null : $first;
+    }
+
+    /**
+     * Post one request to the Translation API and return the translated texts in order, or null
+     * when the call failed. A failure is logged under the given prefix and never thrown.
+     *
+     * The key travels in the X-goog-api-key header, not in the URL: an HTTP client exception
+     * quotes the URL, and that message ends up in the log.
+     *
+     * @param  string|array<int, string>  $query
+     * @return array<int, string>|null
+     */
+    protected function request(string|array $query, string $targetLocale, ?string $sourceLocale, string $format, string $logPrefix): ?array
+    {
+        try {
+            $response = Http::asJson()
+                ->acceptJson()
+                ->withHeaders(['X-goog-api-key' => (string) $this->apiKey])
+                ->post($this->baseUrl, [
+                    'q' => $query,
+                    'source' => $sourceLocale ?? $this->getSourceLocale(),
+                    'target' => $targetLocale,
+                    'format' => $format,
+                ]);
+
+            if ($response->successful()) {
+                $translations = $response->json('data.translations');
+
+                if (! is_array($translations)) {
+                    return [];
+                }
+
+                return array_values(array_map(
+                    fn ($translation): string => (string) ($translation['translatedText'] ?? ''),
+                    $translations,
+                ));
+            }
+
+            Log::error($logPrefix.': '.$response->body());
+
+            return null;
+        } catch (\Exception $e) {
+            Log::error($logPrefix.': '.$e->getMessage());
+
+            return null;
+        }
     }
 }

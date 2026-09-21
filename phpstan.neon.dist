@@ -1,0 +1,18 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: 8
+    paths:
+        - src
+        # The trait is only used by host app models. The fixture model uses it, so PHPStan
+        # analyses the trait instead of skipping it as unused.
+        - tests/Fixtures
+    ignoreErrors:
+        # A host app model may leave $translatableFields and $htmlFields out, and the trait then
+        # falls back to its defaults. The fixture defines both, so in that one context PHPStan
+        # sees a property that is never null.
+        -
+            identifier: nullCoalesce.property
+            path: src/Traits/HasGoogleTranslate.php
+            count: 2

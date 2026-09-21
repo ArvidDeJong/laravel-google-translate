@@ -3,6 +3,10 @@
 namespace Darvis\LaravelGoogleTranslate\Traits;
 
 use Darvis\LaravelGoogleTranslate\GoogleTranslateService;
+use Darvis\LaravelGoogleTranslate\Support\GoogleTranslateConfig;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Trait for Eloquent models that support translations via pid column
@@ -12,12 +16,20 @@ use Darvis\LaravelGoogleTranslate\GoogleTranslateService;
  * - Model must have 'pid' column (parent id for translations)
  * - Model must define $translatableFields array
  * - Model must define $htmlFields array (optional, for HTML content)
+ *
+ * @phpstan-require-extends Model
+ *
+ * @property int|string $id
+ * @property int|string|null $pid
+ * @property string $locale
  */
 trait HasGoogleTranslate
 {
     /**
      * Get the translatable fields for this model
      * Override this in your model to customize
+     *
+     * @return array<int, string>
      */
     public function getTranslatableFields(): array
     {
@@ -32,6 +44,8 @@ trait HasGoogleTranslate
     /**
      * Get the HTML fields that should use HTML translation mode
      * Override this in your model to customize
+     *
+     * @return array<int, string>
      */
     public function getHtmlFields(): array
     {
@@ -50,9 +64,7 @@ trait HasGoogleTranslate
             return true;
         }
 
-        $parentId = $this->pid ?? $this->id;
-
-        return static::where('pid', $parentId)
+        return $this->translationGroup()
             ->where('locale', $locale)
             ->exists();
     }
@@ -66,28 +78,41 @@ trait HasGoogleTranslate
             return $this;
         }
 
-        $parentId = $this->pid ?? $this->id;
-
-        return static::where('pid', $parentId)
+        return $this->translationGroup()
             ->where('locale', $locale)
             ->first();
     }
 
     /**
      * Get all translations for this model (including self)
+     *
+     * @return Collection<int, static>
      */
-    public function getAllTranslations(): \Illuminate\Database\Eloquent\Collection
+    public function getAllTranslations(): Collection
+    {
+        return $this->translationGroup()->get();
+    }
+
+    /**
+     * Query for the source row and every translation of it. The source row has no pid, so a
+     * lookup on pid alone never finds it from one of its translations.
+     *
+     * @return Builder<static>
+     */
+    protected function translationGroup()
     {
         $parentId = $this->pid ?? $this->id;
 
-        return static::where(function ($query) use ($parentId) {
+        return static::query()->where(function ($query) use ($parentId) {
             $query->where('id', $parentId)
                 ->orWhere('pid', $parentId);
-        })->get();
+        });
     }
 
     /**
      * Create a new translation using Google Translate
+     *
+     * @param  array<string, mixed>  $additionalAttributes
      */
     public function createTranslation(string $targetLocale, array $additionalAttributes = []): ?static
     {
@@ -119,7 +144,7 @@ trait HasGoogleTranslate
         // Merge with additional attributes and create
         $parentId = $this->pid ?? $this->id;
 
-        return static::create(array_merge(
+        return static::query()->create(array_merge(
             $additionalAttributes,
             $translatedData,
             [
@@ -131,6 +156,8 @@ trait HasGoogleTranslate
 
     /**
      * Fill empty translatable fields from source translation
+     *
+     * @return array{translated: array<int, string>, errors: array<int, string>}
      */
     public function fillMissingTranslations(?string $sourceLocale = null): array
     {
@@ -188,6 +215,9 @@ trait HasGoogleTranslate
 
     /**
      * Scope to get only source items (no pid)
+     *
+     * @param  Builder<static>  $query
+     * @return Builder<static>
      */
     public function scopeSourceItems($query)
     {
@@ -196,6 +226,9 @@ trait HasGoogleTranslate
 
     /**
      * Scope to get items in specific locale
+     *
+     * @param  Builder<static>  $query
+     * @return Builder<static>
      */
     public function scopeLocalized($query, ?string $locale = null)
     {
@@ -206,13 +239,15 @@ trait HasGoogleTranslate
 
     /**
      * Get items missing translation for given locale
+     *
+     * @return Collection<int, static>
      */
-    public static function getMissingTranslations(string $targetLocale, ?string $sourceLocale = null): \Illuminate\Database\Eloquent\Collection
+    public static function getMissingTranslations(string $targetLocale, ?string $sourceLocale = null): Collection
     {
-        $sourceLocale = $sourceLocale ?? config('google-translate.source_locale', 'nl');
+        $sourceLocale = $sourceLocale ?? GoogleTranslateConfig::sourceLocale();
 
         // Get all source items
-        $sourceItems = static::where('locale', $sourceLocale)
+        $sourceItems = static::query()->where('locale', $sourceLocale)
             ->whereNull('pid')
             ->get();
 

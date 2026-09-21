@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-09-21
+
 ### Added
 - `Darvis\LaravelGoogleTranslate\Support\GoogleTranslateConfig`, the one place that reads the package
   config, with `apiKey()`, `sourceLocale()` and `targetLocales()`. A test fails the build on a direct
@@ -65,5 +67,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Configurable source and target locales
 - Automatic filling of missing translations
 
-[Unreleased]: https://github.com/ArvidDeJong/laravel-google-translate/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/ArvidDeJong/laravel-google-translate/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/ArvidDeJong/laravel-google-translate/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/ArvidDeJong/laravel-google-translate/releases/tag/v1.0.1

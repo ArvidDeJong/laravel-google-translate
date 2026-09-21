@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-09-21
+
 ### Added
 - Documentation: a [Testing](https://arviddejong.github.io/laravel-google-translate/testing.html) page
   with a complete example test, the shape of the request and the response to fake, and the two traps
@@ -104,6 +106,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Configurable source and target locales
 - Automatic filling of missing translations
 
-[Unreleased]: https://github.com/ArvidDeJong/laravel-google-translate/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/ArvidDeJong/laravel-google-translate/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/ArvidDeJong/laravel-google-translate/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/ArvidDeJong/laravel-google-translate/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/ArvidDeJong/laravel-google-translate/releases/tag/v1.0.1

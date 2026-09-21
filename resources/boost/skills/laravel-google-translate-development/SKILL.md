@@ -88,7 +88,7 @@ $result = $english->fillMissingTranslations();
 
 ## Translate in a job, source rows only
 
-A call takes a few hundred milliseconds and costs money per character, for every locale again.
+Every field is one HTTP request to Google, and Google charges for the characters you send, for every locale again.
 
 ```php
 public function handle(GoogleTranslateService $translator): void
@@ -144,5 +144,6 @@ expect($translation->title)->toBe('[en] Over ons');
 ```
 
 - Set the key before the service is resolved, or call `app()->forgetInstance(GoogleTranslateService::class)` after changing it.
+- A forgotten fake does not throw: the package catches the stray request exception like any other failure, returns `null` and logs `Google Translate failed: Attempted request to [...] without a matching fake.`
 - To test the failure path, return `Http::response(['error' => 'denied'], 403)` and assert on `null`, not on an exception.
 - Assert on the request with `Http::assertSent(fn ($request) => $request['format'] === 'html')`.

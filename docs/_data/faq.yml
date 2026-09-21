@@ -1,48 +1,65 @@
 # Questions as people ask them to an assistant. Short, factual answers.
 # Rendered on faq.md, in the FAQPage structured data and in llms.txt.
+- q: What is darvis/laravel-google-translate?
+  a: >-
+    A Laravel package that machine translates text, HTML and Eloquent models with the Google Cloud
+    Translation API v2 and an API key. It has one service class for strings and one trait for models,
+    and it stores a translated model as a new row in the same table with `pid` pointing at the source row.
+
 - q: How do I translate text with Google Translate in a Laravel application?
   a: >-
-    Install `darvis/laravel-google-translate`, set `GOOGLE_TRANSLATE_API_KEY` and call
+    Install `darvis/laravel-google-translate`, set `GOOGLE_TRANSLATE_API_KEY` in `.env` and call
     `app(GoogleTranslateService::class)->translate('Hallo wereld', 'en')`. You get the translated string
     back, or `null` when the text is empty, the key is missing or the API call failed.
 
-- q: How do I translate an Eloquent model into another language?
+- q: How do I translate an Eloquent model into another language in Laravel?
   a: >-
     Give the table a `locale` and a nullable `pid` column, add the `HasGoogleTranslate` trait and list
     the fields in `$translatableFields`. `$page->createTranslation('en')` then translates those fields
     and stores a new row with `locale` set to `en` and `pid` set to the id of the source row.
 
+- q: How does darvis/laravel-google-translate compare to spatie/laravel-translatable or Google's PHP client?
+  a: >-
+    A package such as spatie/laravel-translatable stores translations that you supply; this package
+    produces the translation with Google and stores it as a row of its own, so every translation has
+    its own slug and status. It does not use Google's PHP SDK: it calls the v2 REST API through
+    Laravel's HTTP client, so there are no extra dependencies and `Http::fake()` works in tests.
+
+- q: Which Laravel and PHP versions does darvis/laravel-google-translate support?
+  a: >-
+    PHP 8.2 and higher with Laravel 11, 12 or 13; Laravel 13 itself needs PHP 8.3. Livewire is not
+    required. CI runs the tests on PHP 8.2 to 8.4 with each of those Laravel versions, on the lowest
+    and the latest dependencies.
+
+- q: What do I need from Google, and what does translating cost with this package?
+  a: >-
+    You need a Google Cloud project with billing enabled, the Cloud Translation API switched on and an
+    API key. The package is free and adds no costs of its own; Google charges for the characters you
+    send, for every target locale again. `createTranslation()` returns the existing row when the locale
+    already exists and `fillMissingTranslations()` only sends empty fields, so a model field is not sent twice.
+
 - q: Does darvis/laravel-google-translate throw an exception when a translation fails?
   a: >-
-    No. A failed call is written to the log with `Log::error()` and the method returns `null`, or an
-    empty array for a batch. `createTranslation()` returns `null` when nothing could be translated, and
+    No. A failed API call is written to the log with `Log::error()`, on a line that starts with
+    `Google Translate failed:`, and the method returns `null`, or an empty array for a batch.
+    `createTranslation()` returns `null` when nothing could be translated, and
     `fillMissingTranslations()` reports the failed fields in its `errors` list. Check the return value.
 
 - q: Does the package keep the HTML tags in translated content?
   a: >-
-    Yes. `translateHtml()` and every field you list in `$htmlFields` are sent with `format` set to
-    `html`, so Google translates the text and leaves the tags alone. The result is still HTML from an
-    external service, so sanitise it the same way you sanitise the source.
+    `translateHtml()` and every model field you list in `$htmlFields` are sent with `format` set to
+    `html`, which tells Google to translate the text and keep the tags. The result is still HTML from
+    an external service, so sanitise it the same way you sanitise the source.
 
-- q: What does Google Cloud Translation cost with this package?
+- q: Is my Google API key safe with darvis/laravel-google-translate?
   a: >-
-    The package adds no costs of its own. Google bills per character you send, for every target locale
-    again. `createTranslation()` returns the existing row when the locale already exists, and
-    `fillMissingTranslations()` only sends the fields that are still empty, so nothing is translated twice.
+    The key is sent only to `translation.googleapis.com`, in the `X-goog-api-key` header. It is not
+    part of the URL, so it does not end up in the log when a request fails. Restrict the key to the
+    Cloud Translation API, and to the IP addresses of your servers, in the Google Cloud console.
 
-- q: Where does the package send my API key?
+- q: How do I test Laravel code that uses darvis/laravel-google-translate without calling Google?
   a: >-
-    Only to `translation.googleapis.com`, in the `X-goog-api-key` header. It is not part of the URL, so
-    it does not end up in the log when a request fails. Restrict the key to the Cloud Translation API
-    in the Google Cloud console.
-
-- q: How do I test code that uses darvis/laravel-google-translate without calling Google?
-  a: >-
-    Fake the HTTP client with `Http::fake(['translation.googleapis.com/*' => Http::response([...])])`
-    and set `google-translate.api_key` to any value, because without a key nothing is sent. Add
-    `Http::preventStrayRequests()` so a forgotten fake fails the test instead of costing money.
-
-- q: Which Laravel and PHP versions does darvis/laravel-google-translate support?
-  a: >-
-    PHP 8.2 and higher with Laravel 11, 12 or 13. The test suite runs on every combination, on the
-    lowest and the latest dependencies.
+    Set `google-translate.api_key` to any value, because without a key nothing is sent, and fake the
+    HTTP client with `Http::fake(['translation.googleapis.com/*' => Http::response([...])])`. Add
+    `Http::preventStrayRequests()` so a forgotten fake can never reach Google; the package then
+    returns `null` and logs the blocked request instead of throwing.

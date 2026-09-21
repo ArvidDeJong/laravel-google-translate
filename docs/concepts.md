@@ -1,5 +1,5 @@
 ---
-title: Concepts
+title: "Concepts"
 nav_order: 4
 description: "How darvis/laravel-google-translate stores translations as rows linked by pid, what happens when a call fails, and what a translation costs."
 ---
@@ -19,6 +19,7 @@ The trait does not add a translations table or JSON columns. A translation is a 
 - The **source row** has no `pid`.
 - A **translation** has the id of the source row in `pid`.
 - Every row has its own slug, status and relations, so a translation is a full page of its own.
+- The package adds no foreign key and no unique index; the migration is yours. The [quick start](quickstart.md) has an example.
 
 `hasTranslation()`, `getTranslation()` and `getAllTranslations()` work from the source row and from any translation of it.
 
@@ -34,30 +35,35 @@ Without `$translatableFields` the trait uses `title`, `content`, `description` a
 
 A field in `$htmlFields` is sent with `format` set to `html`, so the tags survive. Everything else is sent as plain text.
 
-## A failure never throws
+## A failed API call never throws
 
-The service catches every error of the HTTP client and of the API.
+The service catches every exception around the HTTP call, writes one line to the log with `Log::error()` and returns `null`, or `[]` for a batch.
 
 | Situation | `translate()`, `translateHtml()` | `translateBatch()` | In the log |
 | --- | --- | --- | --- |
 | No API key | `null` | `[]` | nothing |
 | Empty input | `null` | `[]` | nothing |
 | HTTP 4xx or 5xx | `null` | `[]` | `Google Translate failed: ` and the response body |
-| Connection error or timeout | `null` | `[]` | `Google Translate failed: ` and the message |
+| Connection error or timeout | `null` | `[]` | `Google Translate failed: ` and the message of the exception |
+| HTTP 2xx without a translation in the body | `null` | `[]` | nothing |
 
-The prefix is `Google Translate HTML failed` for `translateHtml()` and `Google Translate batch failed` for a batch.
+The prefix is `Google Translate HTML failed: ` for `translateHtml()` and `Google Translate batch failed: ` for a batch.
+
+The package sets no timeout and does not retry. Laravel's HTTP client default applies, which is 30 seconds.
+
+What can still throw is everything around the API call: `createTranslation()` inserts a row, so a missing column value or a model without `$fillable` raises the usual Eloquent exception. See [Troubleshooting](troubleshooting.md).
 
 So check the return value. `createTranslation()` returns `null` when there is no key or no field could be translated. When some fields fail, the translation is created with the fields that did succeed; `fillMissingTranslations()` fills the rest later.
 
 ## The API key
 
-The key is sent in the `X-goog-api-key` header, only to `translation.googleapis.com`. It is never part of the URL, so an error message that quotes the URL does not leak it into the log.
+The key is sent in the `X-goog-api-key` header, only to `https://translation.googleapis.com/language/translate/v2`. It is never part of the URL, so an error message that quotes the URL does not leak it into the log.
 
 The service reads the key when it is constructed. It is a singleton, so a key you change at runtime is only picked up after `app()->forgetInstance(GoogleTranslateService::class)`.
 
 ## Costs
 
-Google bills per character, for every target locale again. The package avoids sending the same text twice:
+The package adds no costs of its own. Google charges for the characters you send, for every target locale again; the current rates are on [Google's pricing page](https://cloud.google.com/translate/pricing). The trait avoids sending the same text twice:
 
 - `createTranslation()` returns the existing row when the locale already exists.
 - `fillMissingTranslations()` skips the fields that already have a value.

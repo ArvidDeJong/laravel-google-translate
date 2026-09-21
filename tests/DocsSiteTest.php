@@ -165,6 +165,24 @@ test('every link to the source points at GitHub, because the site has no src dir
     }
 });
 
+test('every link between pages resolves, and the home page links to every page', function () {
+    $home = (string) file_get_contents(docsPath('index.md'));
+
+    foreach (glob(docsPath('*.md')) as $page) {
+        $name = basename($page);
+
+        preg_match_all('/\]\(([\w-]+\.md)(#[\w-]+)?\)/', (string) file_get_contents($page), $links);
+
+        foreach ($links[1] as $target) {
+            expect(is_file(docsPath($target)))->toBeTrue($name.' links to '.$target.', which does not exist');
+        }
+
+        if ($name !== 'index.md') {
+            expect(str_contains($home, ']('.$name.')'))->toBeTrue('index.md does not link to '.$name);
+        }
+    }
+});
+
 test('the config holds the package facts and the sitemap plugin', function () {
     expect(file_get_contents(docsPath('_config.yml')))
         ->toContain('- jekyll-sitemap')

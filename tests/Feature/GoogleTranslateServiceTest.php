@@ -101,26 +101,47 @@ it('returns null without an api key, without calling the api', function () {
     Http::assertNothingSent();
 });
 
+/**
+ * Collect the error lines the package logs. Log::spy() would replace the whole logger, and Laravel
+ * itself logs deprecations through it on the lowest dependencies.
+ *
+ * @return ArrayObject<int, string>
+ */
+function loggedErrors(): ArrayObject
+{
+    $messages = new ArrayObject;
+
+    Log::listen(function ($logged) use ($messages): void {
+        if ($logged->level === 'error') {
+            $messages[] = $logged->message;
+        }
+    });
+
+    return $messages;
+}
+
 it('logs a failed response and returns null', function () {
     Http::fake(['translation.googleapis.com/*' => Http::response(['error' => ['message' => 'API key not valid']], 400)]);
-    Log::spy();
+    $errors = loggedErrors();
 
     expect($this->service->translate('Hallo', 'en'))->toBeNull()
         ->and($this->service->translateHtml('<p>Hallo</p>', 'en'))->toBeNull()
         ->and($this->service->translateBatch(['Hallo'], 'en'))->toBe([]);
 
-    Log::shouldHaveReceived('error')->withArgs(fn ($message) => str_starts_with($message, 'Google Translate failed: ') && str_contains($message, 'API key not valid'))->once();
-    Log::shouldHaveReceived('error')->withArgs(fn ($message) => str_starts_with($message, 'Google Translate HTML failed: '))->once();
-    Log::shouldHaveReceived('error')->withArgs(fn ($message) => str_starts_with($message, 'Google Translate batch failed: '))->once();
+    expect($errors)->toHaveCount(3)
+        ->and($errors[0])->toStartWith('Google Translate failed: ')->toContain('API key not valid')
+        ->and($errors[1])->toStartWith('Google Translate HTML failed: ')
+        ->and($errors[2])->toStartWith('Google Translate batch failed: ');
 });
 
 it('logs a connection error without the api key and returns null', function () {
     Http::fake(fn ($request) => throw new ConnectionException('cURL error 28: Operation timed out for '.$request->url()));
-    Log::spy();
+    $errors = loggedErrors();
 
     expect($this->service->translate('Hallo', 'en'))->toBeNull();
 
-    Log::shouldHaveReceived('error')->withArgs(fn ($message) => str_contains($message, 'cURL error 28') && ! str_contains($message, 'test-api-key'))->once();
+    expect($errors)->toHaveCount(1)
+        ->and($errors[0])->toContain('cURL error 28')->not->toContain('test-api-key');
 });
 
 it('returns null when a successful response has no translation', function () {

@@ -100,6 +100,10 @@ composer analyse   # Larastan
 
 See [CHANGELOG](CHANGELOG.md).
 
+## Support the package
+
+If darvis/laravel-google-translate saves you time, a star on [GitHub](https://github.com/ArvidDeJong/laravel-google-translate) or a favourite on [Packagist](https://packagist.org/packages/darvis/laravel-google-translate) helps other developers find it.
+
 ## Contributing
 
 See [CONTRIBUTING](CONTRIBUTING.md).
